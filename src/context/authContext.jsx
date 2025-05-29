@@ -11,7 +11,6 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on initial load
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -27,23 +26,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (user) => {
-    setCurrentUser(user);
-    setIsAdmin(user.role === 'admin');
-    localStorage.setItem('user', JSON.stringify(user));
-  };
+  setCurrentUser(user);
+  setIsAdmin(user.role === 'admin');
+  localStorage.setItem('user', JSON.stringify(user));
+  if (user.token) {
+    localStorage.setItem('utd_auth', user.token);
+  }
+};
 
-  const logout = () => {
-    setCurrentUser(null);
-    setIsAdmin(false);
-    localStorage.removeItem('user');
-  };
+const logout = () => {
+  setCurrentUser(null);
+  setIsAdmin(false);
+  localStorage.removeItem('user');
+  localStorage.removeItem('utd_auth');
+};
 
   const value = {
-    currentUser,
+    user: currentUser,
     isAdmin,
     loading,
     login,
-    logout
+    logout,
   };
 
   return (

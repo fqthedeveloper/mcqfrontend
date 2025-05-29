@@ -1,18 +1,23 @@
 // src/components/Admin/Dashboard.js
-import React from 'react';
+import React,{useEffect} from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
+
+  useEffect(() => {
+      document.title = "Admin Dashboard";
+    }, []);
+
   return (
     <div className="admin-dashboard">
       <h1>Admin Dashboard</h1>
       <div className="dashboard-cards">
-        <Link to="/admin/users" className="card">
+        <Link to="/admin/add-student" className="card">
           <div className="card-icon">
-            <i className="fas fa-users"></i>
+            <i class="fa-solid fa-user-plus"></i>
           </div>
-          <h3>User Management</h3>
-          <p>Manage system users</p>
+          <h3>Add Students</h3>
+          <p>add Students </p>
         </Link>
         
         <Link to="/admin/upload" className="card">
@@ -23,12 +28,20 @@ export default function Dashboard() {
           <p>Create new exams</p>
         </Link>
         
-        <Link to="/admin/stats" className="card">
+        <Link to="/admin/add-exam" className="card">
           <div className="card-icon">
-            <i className="fas fa-chart-bar"></i>
+            <i class="fa-solid fa-file-circle-plus"></i>
           </div>
-          <h3>Exam Statistics</h3>
-          <p>View performance reports</p>
+          <h3>Exam Add </h3>
+          <p>Add Exam To Student Give</p>
+        </Link>
+
+        <Link to="/admin/exam-list" className="card">
+          <div className="card-icon">
+            <i class="fa-solid fa-pencil"></i>
+          </div>
+          <h3>Exam List </h3>
+          <p>Exam List and Edit</p>
         </Link>
       </div>
       

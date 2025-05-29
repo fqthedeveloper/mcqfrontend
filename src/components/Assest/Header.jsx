@@ -24,14 +24,12 @@ export default function Header() {
         </div>
         
         <div className={`nav-links ${menuOpen ? 'active' : ''}`}>
-          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
-          <Link to="/features" onClick={() => setMenuOpen(false)}>Features</Link>
-          <Link to="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
-          
+          <Link to="/admin" onClick={() => setMenuOpen(false)}>DashBoard</Link>
+          <Link to="/admin/add-exam" onClick={() => setMenuOpen(false)}>Exam Add</Link>
+          <Link to="/admin/upload" onClick={() => setMenuOpen(false)}>Question Upload</Link>         
           {user ? (
             <div className="user-section">
-              <span className="username">Hi, {user.username}</span>
+              <span className="username">Hi, {user.first_name || user.username}</span>
               <button className="logout-btn" onClick={handleLogout}>
                 Logout
               </button>

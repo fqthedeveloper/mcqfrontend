@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
 import "../CSS/Login.css";
-import { axus } from "../../services/api";
 
 export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
@@ -14,9 +13,9 @@ export default function Login() {
   const { login } = useAuth();
 
   useEffect(() => {
-      document.title = "Login - MCQ Application";
-    }, []);
-    
+    document.title = "Login - MCQ Application";
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -39,28 +38,29 @@ export default function Login() {
         throw new Error(errData.error || "Invalid credentials");
       }
 
+      const data = await res.json(); // ✅ parse response here
+
       const user = {
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        role: response.role || 'student',
-        token: response.token
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        role: data.role || "student",
+        token: data.token,
       };
 
       login(user);
-      
-      // FIXED: Redirect to correct routes
-      if (user.role === 'admin') {
-        navigate('/admin');
+
+      // ✅ Redirect based on role
+      if (user.role === "admin") {
+        navigate("/admin");
       } else {
-        navigate('/student');
+        navigate("/student");
       }
     } catch (err) {
-      setError(err.message || 'Invalid credentials');
+      setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);
     }
-
   };
 
   return (
@@ -105,8 +105,8 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              {/* <button 
-                type="button" 
+              {/* <button
+                type="button"
                 className="password-toggle"
                 onClick={() => setPasswordVisible(!passwordVisible)}
                 aria-label={passwordVisible ? "Hide password" : "Show password"}

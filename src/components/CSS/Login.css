@@ -108,8 +108,8 @@
 
 .input-with-icon i {
   position: absolute;
-  left: 15px;
-  top: 50%;
+  left: -12px;
+  top: 30%;
   transform: translateY(-50%);
   color: #6a11cb;
   font-size: 18px;
@@ -132,15 +132,15 @@
 
 .password-toggle {
   position: absolute;
-  right: 15px;
-  top: 50%;
+  left: 50;
+  top: 35%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: #6a11cb;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 5px;
+  height: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,6 +148,7 @@
   border-radius: 50%;
   transition: background-color 0.3s;
 }
+
 
 .forgot-password {
   text-align: right;

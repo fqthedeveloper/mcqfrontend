@@ -1,4 +1,4 @@
-export const baseURL = 'http://localhost:8000'; // Change to your Django server's actual URL
+export const baseURL = 'http://localhost:8000'; // Change this to your backend server URL
 
 // Helper to read auth token from localStorage
 const getAuthHeaders = () => {
@@ -6,18 +6,24 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Token ${token}` } : {};
 };
 
-// Generic GET request
+// Generic GET (no auth)
 export const get = async (endpoint) => {
   try {
     const response = await fetch(`${baseURL}${endpoint}`);
-    if (!response.ok) throw await response.json();
+    if (!response.ok) {
+      let errMsg = 'Unknown error occurred';
+      try {
+        errMsg = await response.json();
+      } catch {}
+      throw errMsg;
+    }
     return response.json();
   } catch (error) {
     throw error;
   }
 };
 
-// Generic POST request
+// Generic POST (no auth)
 export const post = async (endpoint, data) => {
   try {
     const response = await fetch(`${baseURL}${endpoint}`, {
@@ -25,7 +31,13 @@ export const post = async (endpoint, data) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw await response.json();
+    if (!response.ok) {
+      let errMsg = 'Unknown error occurred';
+      try {
+        errMsg = await response.json();
+      } catch {}
+      throw errMsg;
+    }
     return response.json();
   } catch (error) {
     throw error;
@@ -33,49 +45,80 @@ export const post = async (endpoint, data) => {
 };
 
 // Authenticated GET
-export const authGet = async (endpoint, token = null) => {
+export const authGet = async (endpoint) => {
   try {
     const response = await fetch(`${baseURL}${endpoint}`, {
-      headers: {
-        ...getAuthHeaders(),
-        ...(token && { Authorization: `Token ${token}` }),
-      },
+      headers: getAuthHeaders(),
     });
-    if (!response.ok) throw await response.json();
+    if (!response.ok) {
+      let errMsg = 'Unknown error occurred';
+      try {
+        errMsg = await response.json();
+      } catch {}
+      throw errMsg;
+    }
     return response.json();
   } catch (error) {
     throw error;
   }
 };
 
-// Authenticated POST
-export const authPost = async (endpoint, data, token = null) => {
+// Authenticated POST (JSON)
+export const authPost = async (endpoint, data) => {
   try {
     const response = await fetch(`${baseURL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeaders(),
-        ...(token && { Authorization: `Token ${token}` }),
       },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw await response.json();
+    if (!response.ok) {
+      let errMsg = 'Unknown error occurred';
+      try {
+        errMsg = await response.json();
+      } catch {}
+      throw errMsg;
+    }
     return response.json();
   } catch (error) {
     throw error;
   }
 };
 
-// Custom API functions
+// Authenticated POST for FormData (file uploads, no Content-Type header)
+export const authPostFormData = async (endpoint, formData) => {
+  try {
+    const response = await fetch(`${baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(), // DO NOT set 'Content-Type' manually here
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      let errMsg = 'Unknown error occurred';
+      try {
+        errMsg = await response.json();
+      } catch {}
+      throw errMsg;
+    }
+    return response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Example custom API functions (optional)
 export const getExam = async (examId) => {
-  return get(`/exams/${examId}`);
+  return get(`/exams/${examId}/`);
 };
 
 export const submitAnswers = async (examId, answers) => {
-  return post(`/exams/${examId}/submit`, { answers });
+  return post(`/exams/${examId}/submit/`, { answers });
 };
 
 export const getResult = async (examId) => {
-  return get(`/results/${examId}`);
+  return get(`/results/${examId}/`);
 };
