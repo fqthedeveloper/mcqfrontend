@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+// src/components/Auth/Login.jsx
+import React, { useEffect, useState } from "react"; 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
 import "../CSS/Login.css";
@@ -8,7 +9,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -38,7 +38,7 @@ export default function Login() {
         throw new Error(errData.error || "Invalid credentials");
       }
 
-      const data = await res.json(); // ✅ parse response here
+      const data = await res.json();
 
       const user = {
         id: data.id,
@@ -46,15 +46,17 @@ export default function Login() {
         email: data.email,
         role: data.role || "student",
         token: data.token,
+        force_password_change: data.force_password_change || false,
       };
 
       login(user);
 
-      // ✅ Redirect based on role
-      if (user.role === "admin") {
-        navigate("/admin");
+      if (user.force_password_change) {
+        navigate("/change-password", { replace: true });
+      } else if (user.role === "admin") {
+        navigate("/admin", { replace: true });
       } else {
-        navigate("/student");
+        navigate("/student", { replace: true });
       }
     } catch (err) {
       setError(err.message || "Invalid credentials");
@@ -98,21 +100,13 @@ export default function Login() {
             <div className="input-with-icon">
               <i className="fas fa-lock"></i>
               <input
-                type={passwordVisible ? "text" : "password"}
+                type="password"
                 id="password"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              {/* <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setPasswordVisible(!passwordVisible)}
-                aria-label={passwordVisible ? "Hide password" : "Show password"}
-              >
-                <i className={passwordVisible ? "fas fa-eye-slash" : "fas fa-eye"}></i>
-              </button> */}
             </div>
           </div>
 
@@ -131,25 +125,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="login-footer">
-          <p>
-            Don't have an account? <a href="/signup">Sign Up</a>
-          </p>
-          <div className="social-login">
-            <p>Or sign in with</p>
-            <div className="social-icons">
-              <button className="social-btn google">
-                <i className="fab fa-google"></i>
-              </button>
-              <button className="social-btn facebook">
-                <i className="fab fa-facebook-f"></i>
-              </button>
-              <button className="social-btn github">
-                <i className="fab fa-github"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <div className="login-footer"></div>
       </div>
     </div>
   );

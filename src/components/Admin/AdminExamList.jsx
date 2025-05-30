@@ -169,7 +169,7 @@ const ExamList = () => {
           </div>
         )}
       </div>
-    <style jsx>{`
+    <style>{`
         .exam-list-container {
           padding: 1rem;
           max-width: 1400px;

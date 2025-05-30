@@ -1,4 +1,7 @@
+// src/context/authContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+
 
 const AuthContext = createContext();
 
@@ -7,51 +10,56 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const stored = localStorage.getItem('user');
+    if (stored) {
       try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-        setIsAdmin(user.role === 'admin');
-      } catch (e) {
-        console.error('Failed to parse user data', e);
+        const u = JSON.parse(stored);
+        setUser(u);
+        setIsAdmin(u.role === 'admin');
+      } catch {
+        localStorage.removeItem('user');
       }
     }
     setLoading(false);
   }, []);
 
-  const login = (user) => {
-  setCurrentUser(user);
-  setIsAdmin(user.role === 'admin');
-  localStorage.setItem('user', JSON.stringify(user));
-  if (user.token) {
-    localStorage.setItem('utd_auth', user.token);
-  }
-};
-
-const logout = () => {
-  setCurrentUser(null);
-  setIsAdmin(false);
-  localStorage.removeItem('user');
-  localStorage.removeItem('utd_auth');
-};
-
-  const value = {
-    user: currentUser,
-    isAdmin,
-    loading,
-    login,
-    logout,
+  const login = (u) => {
+    setUser(u);
+    setIsAdmin(u.role === 'admin');
+    localStorage.setItem('user', JSON.stringify(u));
+    if (u.token) {
+      localStorage.setItem('utd_auth', u.token);
+    }
   };
+
+  const logout = () => {
+    setUser(null);
+    setIsAdmin(false);
+    localStorage.removeItem('user');
+    localStorage.removeItem('utd_auth');
+  };
+
+  const value = { user, isAdmin, loading, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );
+}
+export function AuthRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+  if (user) {
+    if (user.force_password_change) {
+      return <Navigate to="/change-password" replace />;
+    }
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/student'} replace />;
+  }
+  return children;
 }

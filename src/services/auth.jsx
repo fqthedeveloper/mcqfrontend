@@ -1,4 +1,4 @@
-import { baseURL, post } from './api';
+import { baseURL, post, authPost  } from './api';
 
 export const loginUser = async (credentials) => {
   try {
@@ -27,5 +27,13 @@ export const loginUser = async (credentials) => {
 };
 
 export const resetPassword = async (email) => {
-  return post('/auth/reset-password/', { email });
+  return post('/api/reset-password/', { email });
 };
+
+export const changePassword = async (newPassword, confirmPassword) => {
+  return authPost('/api/change-password/', {
+    new_password: newPassword,
+    confirm_password: confirmPassword,
+  });
+};
+

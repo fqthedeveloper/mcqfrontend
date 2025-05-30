@@ -1,3 +1,4 @@
+// src/components/Header.js
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/authContext';
@@ -22,31 +23,42 @@ export default function Header() {
         <div className="logo">
           <Link to="/">IRT MCQ App</Link>
         </div>
-        
+
         <div className={`nav-links ${menuOpen ? 'active' : ''}`}>
-          <Link to="/admin" onClick={() => setMenuOpen(false)}>DashBoard</Link>
-          <Link to="/admin/add-exam" onClick={() => setMenuOpen(false)}>Exam Add</Link>
-          <Link to="/admin/upload" onClick={() => setMenuOpen(false)}>Question Upload</Link>         
+          {user?.role === 'admin' && (
+            <>
+              <Link to="/admin">Dashboard</Link>
+              <Link to="/admin/add-exam">Add Exam</Link>
+              <Link to="/admin/upload">Upload Questions</Link>
+              <Link to="/admin/student-list">Students</Link>
+            </>
+          )}
+
+
+          {user?.role === 'student' && (
+            <>
+              <Link to="/student">Dashboard</Link>
+              <Link to="/student/exam-list">Exams</Link>
+              <Link to="/student/results">My Results</Link>
+            </>
+          )}
+
           {user ? (
             <div className="user-section">
               <span className="username">Hi, {user.first_name || user.username}</span>
-              <button className="logout-btn" onClick={handleLogout}>
-                Logout
-              </button>
+              <button className="logout-btn" onClick={handleLogout}>Logout</button>
             </div>
           ) : (
-            <Link to="/login" className="login-btn" onClick={() => setMenuOpen(false)}>
-              Login
-            </Link>
+            <Link to="/login" className="login-btn" onClick={() => setMenuOpen(false)}>Login</Link>
           )}
         </div>
-        
+
         <button className="menu-toggle" onClick={toggleMenu} aria-label="Toggle navigation">
           <i className={`fas ${menuOpen ? 'fa-times' : 'fa-bars'}`}></i>
         </button>
       </div>
       
-      <style jsx>{`
+      <style>{`
         .main-header {
           background: linear-gradient(135deg, #2575fc 0%, #6a11cb 100%);
           color: white;

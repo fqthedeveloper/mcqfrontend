@@ -1,42 +1,71 @@
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { changePassword } from '../../services/auth';
-// import { useAuth } from '../../context/authContext';
+import React, { useState } from 'react';
+import { changePassword } from '../../services/auth';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/authContext';
 
-// export default function ForcePasswordChange() {
-//   const [newPassword, setNewPassword] = useState('');
-//   const [error, setError] = useState('');
-//   const { user, login } = useAuth();
-//   const navigate = useNavigate();
+export default function ChangePasswordPage() {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
-//   const handleChange = async (e) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
 
-//     e.preventDefault();
-//     try {
-//       await changePassword(newPassword);
-//       const updatedUser = { ...user, force_password_change: false };
-//       login(updatedUser, localStorage.getItem('auth_token'));
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
-//       navigate(user.user_type === 'admin' ? '/admin' : '/student');
-//     } catch {
-//       setError('Password update failed.');
-//     }
-//   };
+    try {
+      await changePassword(newPassword, confirmPassword);
+      setSuccess('Password changed successfully. Please login again.');
+      logout();
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-//   return (
-//     <div className="auth-form">
-//       <h2>Change Your Password</h2>
-//       {error && <p className="error">{error}</p>}
-//       <form onSubmit={handleChange}>
-//         <input
-//           type="password"
-//           placeholder="New Password"
-//           value={newPassword}
-//           onChange={e => setNewPassword(e.target.value)}
-//           required
-//         />
-//         <button type="submit">Update Password</button>
-//       </form>
-//     </div>
-//   );
-// }
+  return (
+    <div className="max-w-md mx-auto mt-10 p-4 border shadow rounded bg-white">
+      <h2 className="text-2xl font-bold mb-4 text-center">Change Password</h2>
+      {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+      {success && <div className="text-green-600 text-sm mb-2">{success}</div>}
+      <form onSubmit={handleSubmit}>
+        <label className="block mb-2">
+          New Password
+          <input
+            type="password"
+            className="w-full p-2 border mt-1 rounded"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+          />
+        </label>
+        <label className="block mb-2 mt-4">
+          Confirm Password
+          <input
+            type="password"
+            className="w-full p-2 border mt-1 rounded"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+          />
+        </label>
+        <button
+          type="submit"
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700"
+        >
+          Change Password
+        </button>
+      </form>
+    </div>
+  );
+}
