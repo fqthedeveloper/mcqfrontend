@@ -11,28 +11,24 @@ const EXAM_MODE = {
   STRICT: 'strict'
 };
 
-// Enhanced option parsing that handles various formats
 const parseOptions = (options) => {
-  // Handle null/undefined
   if (!options) return [];
   
-  // If already an array, return as-is
   if (Array.isArray(options)) return options;
   
-  // If it's a string that looks like JSON
   if (typeof options === 'string') {
     try {
-      // Try parsing as JSON
       const parsed = JSON.parse(options);
       
-      // Handle different parsed types
       if (Array.isArray(parsed)) {
         return parsed;
-      } else if (typeof parsed === 'object' && parsed !== null) {
-        // Convert object to array of values
+      }
+      
+      if (typeof parsed === 'object' && parsed !== null) {
         return Object.values(parsed);
-      } else if (typeof parsed === 'string') {
-        // Handle nested JSON strings
+      }
+      
+      if (typeof parsed === 'string') {
         try {
           const doubleParsed = JSON.parse(parsed);
           if (Array.isArray(doubleParsed)) return doubleParsed;
@@ -42,50 +38,40 @@ const parseOptions = (options) => {
           return [parsed];
         }
       }
+      
       return [parsed];
     } catch (error) {
-      // Handle special case of escaped JSON strings
       if (options.includes('\\"')) {
         try {
           const unescaped = options.replace(/\\"/g, '"');
           const parsed = JSON.parse(unescaped);
           if (Array.isArray(parsed)) return parsed;
           if (typeof parsed === 'object') return Object.values(parsed);
-        } catch (e) {
-          // Fall through to other methods
-        }
+        } catch (e) {}
       }
       
-      // Handle key:value format
       if (options.includes(':')) {
         try {
-          const keyValuePairs = options.split(',')
+          return options.split(',')
             .map(pair => {
               const match = pair.match(/["']?([^"':]+)["']?\s*:\s*["']?([^"']+)["']?/);
               return match ? match[2] : pair;
             });
-          return keyValuePairs;
-        } catch (e) {
-          // Fall through
-        }
+        } catch (e) {}
       }
       
-      // Handle comma-separated values
       if (options.includes(',')) {
         return options.split(',').map(opt => opt.trim());
       }
       
-      // Return as single element array
       return [options];
     }
   }
   
-  // If it's an object, return its values
   if (typeof options === 'object') {
     return Object.values(options);
   }
   
-  // Fallback to empty array
   return [];
 };
 
@@ -114,7 +100,6 @@ export default function Exam() {
   const visibilityListenerRef = useRef(null);
   const blurListenerRef = useRef(null);
 
-  // Load exam data
   useEffect(() => {
     if (!examContextReady) return;
     
@@ -133,7 +118,6 @@ export default function Exam() {
     if (examId) loadExam();
   }, [examId, setCurrentExam, examContextReady]);
 
-  // Shuffle array utility
   const shuffleArray = (array) => {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
@@ -143,7 +127,6 @@ export default function Exam() {
     return newArray;
   };
 
-  // Save progress to localStorage
   const saveProgress = useCallback(() => {
     if (!currentExam || !examSessionId) return;
     
@@ -160,7 +143,6 @@ export default function Exam() {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
   }, [answers, currentQuestion, timeLeft, currentExam, shuffledQuestions, examSessionId]);
 
-  // Check submission status
   const checkSubmissionStatus = useCallback(async () => {
     if (!currentExam || !currentUser) return;
     
@@ -176,7 +158,6 @@ export default function Exam() {
     }
   }, [currentExam, currentUser]);
 
-  // Start exam session
   const startExamSession = useCallback(async () => {
     if (!currentExam || !currentUser) return null;
     
@@ -196,7 +177,6 @@ export default function Exam() {
     }
   }, [currentExam, currentUser]);
 
-  // Handle visibility changes
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden && isStrictMode && !examSubmitted && examSessionId) {
       setTabHidden(true);
@@ -219,7 +199,6 @@ export default function Exam() {
     }
   }, [isStrictMode, examSubmitted, examSessionId]);
 
-  // Handle window blur
   const handleWindowBlur = useCallback(() => {
     if (isStrictMode && !examSubmitted && examSessionId) {
       setTabHidden(true);
@@ -238,7 +217,6 @@ export default function Exam() {
     }
   }, [isStrictMode, examSubmitted, examSessionId]);
 
-  // Retry session creation
   useEffect(() => {
     if (retryCount > 0 && retryCount <= MAX_RETRIES) {
       const timer = setTimeout(() => startExamSession(), 2000);
@@ -246,7 +224,6 @@ export default function Exam() {
     }
   }, [retryCount, startExamSession]);
 
-  // Main initialization
   useEffect(() => {
     if (!currentExam || !currentUser) {
       if (currentUser && examId) {
@@ -280,15 +257,15 @@ export default function Exam() {
           return;
         }
 
-        // Parse and clean questions
         const cleanedQuestions = (currentExam.questions || [])
           .map(q => ({
             ...q,
             options: parseOptions(q.options)
           }))
           .filter(q => {
-            // Ensure we have a non-empty array of options
-            return Array.isArray(q.options) && q.options.length > 0;
+            return q.text && q.text.trim() !== '' && 
+                   Array.isArray(q.options) && 
+                   q.options.length > 0;
           });
 
         if (cleanedQuestions.length === 0) {
@@ -297,7 +274,6 @@ export default function Exam() {
           return;
         }
 
-        // Shuffle questions and options
         const shuffled = shuffleArray(cleanedQuestions).map(question => ({
           ...question,
           options: shuffleArray(question.options)
@@ -305,7 +281,6 @@ export default function Exam() {
 
         setShuffledQuestions(shuffled);
 
-        // Initialize answers state
         const initialAnswers = {};
         shuffled.forEach(q => {
           initialAnswers[q.id] = q.is_multi ? [] : null;
@@ -313,7 +288,6 @@ export default function Exam() {
         setAnswers(initialAnswers);
         setTimeLeft(currentExam.duration * 60);
         
-        // Create new session
         const sessionId = await startExamSession();
         setExamSessionId(sessionId);
       } catch (e) {
@@ -326,13 +300,11 @@ export default function Exam() {
     initializeExam();
   }, [currentExam, currentUser, isStrictMode, examSubmitted, examId, navigate, checkSubmissionStatus, startExamSession]);
 
-  // Set document title
   useEffect(() => {
     if (currentExam) document.title = `${currentExam.title} - Exam`;
     return () => { document.title = 'Exam Platform'; };
   }, [currentExam]);
 
-  // Timer logic
   useEffect(() => {
     if (loading || examSubmitted || !examSessionId) return;
 
@@ -348,14 +320,12 @@ export default function Exam() {
     return () => clearInterval(timerRef.current);
   }, [timeLeft, loading, examSubmitted, examSessionId]);
 
-  // Save progress
   useEffect(() => {
     if (!loading && currentExam && !examSubmitted && examSessionId) {
       saveProgress();
     }
   }, [answers, timeLeft, currentQuestion, saveProgress, loading, currentExam, examSubmitted, examSessionId]);
 
-  // Strict mode event listeners
   useEffect(() => {
     if (isStrictMode && !examSubmitted && examSessionId) {
       visibilityListenerRef.current = handleVisibilityChange;
@@ -366,20 +336,22 @@ export default function Exam() {
     }
     
     return () => {
-      document.removeEventListener('visibilitychange', visibilityListenerRef.current);
-      window.removeEventListener('blur', blurListenerRef.current);
+      if (visibilityListenerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityListenerRef.current);
+      }
+      if (blurListenerRef.current) {
+        window.removeEventListener('blur', blurListenerRef.current);
+      }
       clearInterval(tabHiddenTimerRef.current);
     };
   }, [isStrictMode, examSubmitted, examSessionId, handleVisibilityChange, handleWindowBlur]);
 
-  // Format time
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
 
-  // Handle answer selection
   const handleAnswer = (questionId, optionIndex) => {
     if (examSubmitted) return;
     
@@ -399,12 +371,9 @@ export default function Exam() {
     });
   };
 
-  // Navigation
   const handleNext = () => currentQuestion < shuffledQuestions.length - 1 && setCurrentQuestion(currentQuestion + 1);
   const handlePrevious = () => currentQuestion > 0 && setCurrentQuestion(currentQuestion - 1);
-  const handleQuestionNav = (index) => setCurrentQuestion(index);
 
-  // Format answers for submission
   const formatAnswersForSubmission = useCallback(() => {
     return shuffledQuestions.map(question => {
       const answer = answers[question.id];
@@ -428,7 +397,6 @@ export default function Exam() {
     });
   }, [shuffledQuestions, answers]);
 
-  // Submit exam
   const handleSubmit = useCallback(async (isAuto = false, reason = '') => {
     if (examSubmitted || !examSessionId) return;
     
@@ -455,7 +423,6 @@ export default function Exam() {
     }
   }, [examSubmitted, examSessionId, formatAnswersForSubmission, submitExam, navigate]);
 
-  // Confirm submit
   const confirmSubmit = () => {
     if (examSubmitted) return;
     if (window.confirm('Are you sure you want to submit the exam?')) {
@@ -463,7 +430,6 @@ export default function Exam() {
     }
   };
 
-  // Render states
   if (loading) {
     return (
       <div className="exam-loading">

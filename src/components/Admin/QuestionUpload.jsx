@@ -1,43 +1,102 @@
 import React, { useState, useEffect } from "react";
-import {authPostFormData} from "../../services/api"; // import axios directly
 import axios from "axios";
 import { useAuth } from "../../context/authContext";
-import { FaFileExcel, FaDownload, FaCloudUploadAlt, FaPlus, FaCheckCircle } from 'react-icons/fa';
-import "../CSS/Questionupload.css"; // Adjust the path as necessary
-
+import {
+  FaFileExcel,
+  FaDownload,
+  FaCloudUploadAlt,
+  FaPlus,
+  FaCheckCircle,
+} from "react-icons/fa";
+import "../CSS/Questionupload.css";
 
 const QuestionUpload = () => {
-  useEffect(() => {
-    document.title = "Upload Questions";
-  }, []);
-
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showSingleForm, setShowSingleForm] = useState(false);
+  const [subjects, setSubjects] = useState([]);
+  const [isMulti, setIsMulti] = useState(false);
+  const [bulkSubjectId, setBulkSubjectId] = useState("");
+
   const [singleQuestion, setSingleQuestion] = useState({
-    subject: "",
+    subject_id: "",
     text: "",
     option_a: "",
     option_b: "",
     option_c: "",
     option_d: "",
     correct_answer: "A",
+    correct_answers: [],
     marks: 1,
+    explanation: "",
   });
 
   const { token } = useAuth();
 
+  useEffect(() => {
+    document.title = "Upload Questions";
+    fetchSubjects();
+  }, []);
+
+  const fetchSubjects = async () => {
+    try {
+      const authToken = token || localStorage.getItem("utd_auth");
+      const response = await axios.get("http://localhost:8000/api/subjects/", {
+        headers: {
+          Authorization: `Token ${authToken}`,
+        },
+      });
+      setSubjects(response.data);
+    } catch (error) {
+      console.error("Failed to load subjects", error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setSingleQuestion((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleMultiToggle = (e) => {
+    const checked = e.target.checked;
+    setIsMulti(checked);
+    setSingleQuestion((prev) => ({
+      ...prev,
+      correct_answer: "A",
+      correct_answers: [],
+    }));
+  };
+
+  const handleMultiCorrectAnswerChange = (e) => {
+    const { value, checked } = e.target;
+    setSingleQuestion((prev) => {
+      let newCorrectAnswers = [...prev.correct_answers];
+      if (checked) {
+        if (!newCorrectAnswers.includes(value)) newCorrectAnswers.push(value);
+      } else {
+        newCorrectAnswers = newCorrectAnswers.filter((ans) => ans !== value);
+      }
+      return {
+        ...prev,
+        correct_answers: newCorrectAnswers,
+      };
+    });
+  };
+
   const handleDownload = async () => {
     try {
-      const token = localStorage.getItem("utd_auth");
+      const authToken = token || localStorage.getItem("utd_auth");
       const response = await fetch(
         "http://localhost:8000/api/questions/download_format/",
         {
           method: "GET",
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Token ${authToken}`,
           },
         }
       );
@@ -46,7 +105,6 @@ const QuestionUpload = () => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "question_format.xlsx");
@@ -56,41 +114,54 @@ const QuestionUpload = () => {
 
       setMessage("Format downloaded successfully!");
       setShowSuccess(true);
+      setIsError(false);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Download error:", error);
       setMessage("Failed to download format");
-      setIsError(false);
-
+      setIsError(true);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     }
   };
 
   const handleBulkUpload = async (e) => {
     e.preventDefault();
-    if (!file) {
-      setMessage("Please select a file");
+    if (!file || !bulkSubjectId) {
+      setMessage("Please select a file and subject");
       setShowSuccess(true);
+      setIsError(true);
+      setTimeout(() => setShowSuccess(false), 3000);
       return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("subject_id", bulkSubjectId);
 
     try {
-      const token = localStorage.getItem("utd_auth");
-      await axios.post("http://localhost:8000/api/questions/bulk_upload/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Token ${token}`,
-        },
-      });
+      const authToken = token || localStorage.getItem("utd_auth");
+      await axios.post(
+        "http://localhost:8000/api/questions/bulk_upload/",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Token ${authToken}`,
+          },
+        }
+      );
       setMessage("Questions uploaded successfully!");
       setShowSuccess(true);
+      setIsError(false);
       setFile(null);
-      e.target.reset();
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Upload error:", error.response || error.message);
       setMessage(error.response?.data?.message || "Upload failed");
+      setShowSuccess(true);
       setIsError(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     }
   };
 
@@ -99,9 +170,22 @@ const QuestionUpload = () => {
     try {
       const authToken = token || localStorage.getItem("utd_auth");
 
-      // Prepare data in expected format (match your backend fields)
+      let correctAnswersPayload;
+      if (isMulti) {
+        if (singleQuestion.correct_answers.length === 0) {
+          setMessage("Please select at least one correct answer.");
+          setIsError(true);
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 3000);
+          return;
+        }
+        correctAnswersPayload = singleQuestion.correct_answers;
+      } else {
+        correctAnswersPayload = singleQuestion.correct_answer;
+      }
+
       const payload = {
-        subject: singleQuestion.subject,
+        subject_id: singleQuestion.subject_id,
         text: singleQuestion.text,
         options: {
           A: singleQuestion.option_a,
@@ -109,9 +193,10 @@ const QuestionUpload = () => {
           C: singleQuestion.option_c,
           D: singleQuestion.option_d,
         },
-        correct_answers: singleQuestion.correct_answer,
+        correct_answers: correctAnswersPayload,
         marks: singleQuestion.marks,
-        is_multi: false,  // Adjust if you want to add multi-select in UI
+        is_multi: isMulti,
+        explanation: singleQuestion.explanation,
       };
 
       await axios.post("http://localhost:8000/api/questions/", payload, {
@@ -121,180 +206,233 @@ const QuestionUpload = () => {
         },
       });
       setMessage("Question added successfully!");
+      setShowSuccess(true);
       setIsError(false);
       setSingleQuestion({
-        subject: "",
+        subject_id: "",
         text: "",
         option_a: "",
         option_b: "",
         option_c: "",
         option_d: "",
         correct_answer: "A",
+        correct_answers: [],
         marks: 1,
+        explanation: "",
       });
+      setIsMulti(false);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Add question error:", error.response || error.message);
       setMessage(error.response?.data?.message || "Failed to add question");
+      setShowSuccess(true);
       setIsError(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setSingleQuestion((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
     <div className="question-upload-container">
-      {/* Header */}
       <div className="header">
-        <h1><FaFileExcel /> Question Management</h1>
+        <h1>
+          <FaFileExcel /> Question Management
+        </h1>
         <div className="mode-toggle">
           <button
-            className={`toggle-btn ${!showSingleForm ? 'active' : ''}`}
+            className={`toggle-btn ${!showSingleForm ? "active" : ""}`}
             onClick={() => setShowSingleForm(false)}
+            aria-pressed={!showSingleForm}
           >
             <FaCloudUploadAlt /> Bulk Upload
           </button>
           <button
-            className={`toggle-btn ${showSingleForm ? 'active' : ''}`}
+            className={`toggle-btn ${showSingleForm ? "active" : ""}`}
             onClick={() => setShowSingleForm(true)}
+            aria-pressed={showSingleForm}
           >
             <FaPlus /> Add Single
           </button>
         </div>
       </div>
 
-      {/* Bulk Upload */}
       {!showSingleForm ? (
-        <div className="card">
-          <div className="card-header">
-            <h2><FaCloudUploadAlt /> Bulk Upload Questions</h2>
-            <p>Upload multiple questions using Excel format</p>
-          </div>
-          
-          <div className="card-body">
-            <div className="instruction">
-              <p>Download the Excel template, fill in your questions, and upload the file.</p>
-              <button onClick={handleDownload} className="download-btn">
-                <FaDownload /> Download Format
-              </button>
+        <div className="bulk-upload">
+          <form onSubmit={handleBulkUpload}>
+            <div className="form-group">
+              <label htmlFor="bulkSubject">Select Subject</label>
+              <select
+                id="bulkSubject"
+                value={bulkSubjectId}
+                onChange={(e) => setBulkSubjectId(e.target.value)}
+                required
+              >
+                <option value="">--Select Subject--</option>
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <form onSubmit={handleBulkUpload}>
-              <div className="form-group">
-                <label htmlFor="formFile">Select Excel File</label>
-                <input
-                  type="file"
-                  id="formFile"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  required
-                />
-              </div>
-              <button type="submit" className="upload-btn">
+            <div className="form-group">
+              <label htmlFor="bulkFile">Upload Excel File</label>
+              <input
+                id="bulkFile"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setFile(e.target.files[0])}
+                required
+              />
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="download-btn"
+                onClick={handleDownload}
+                aria-label="Download Excel format"
+              >
+                <FaDownload /> Download Format
+              </button>
+              <button
+                type="submit"
+                className="upload-btn"
+                aria-label="Upload questions"
+              >
                 <FaCloudUploadAlt /> Upload Questions
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       ) : (
-        // Single Question Form
-        <div className="card">
-          <div className="card-header">
-            <h2><FaPlus /> Add Single Question</h2>
-            <p>Create a new question manually</p>
-          </div>
-          
-          <div className="card-body">
-            <form onSubmit={handleSingleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Subject</label>
-                  <input
-                    type="text"
-                    name="subject"
-                    value={singleQuestion.subject}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter subject name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Marks</label>
-                  <input
-                    type="number"
-                    name="marks"
-                    value={singleQuestion.marks}
-                    onChange={handleInputChange}
-                    min="1"
-                    required
-                  />
-                </div>
-              </div>
-              
+        <div className="single-question-form">
+          <form onSubmit={handleSingleSubmit}>
+            <div className="form-group">
+              <label htmlFor="singleSubject">Subject</label>
+              <select
+                id="singleSubject"
+                value={singleQuestion.subject_id}
+                name="subject_id"
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">--Select Subject--</option>
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="questionText">Question Text</label>
+              <textarea
+                id="questionText"
+                name="text"
+                value={singleQuestion.text}
+                onChange={handleInputChange}
+                rows="3"
+                required
+              />
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
-                <label>Question Text</label>
-                <textarea
-                  name="text"
-                  value={singleQuestion.text}
+                <label htmlFor="optionA">Option A</label>
+                <input
+                  id="optionA"
+                  type="text"
+                  name="option_a"
+                  value={singleQuestion.option_a}
                   onChange={handleInputChange}
-                  rows="3"
                   required
-                  placeholder="Enter your question here..."
                 />
               </div>
-              
-              <div className="options-grid">
-                <div className="option-card">
-                  <label>Option A</label>
-                  <input
-                    type="text"
-                    name="option_a"
-                    value={singleQuestion.option_a}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter option A"
-                  />
-                </div>
-                <div className="option-card">
-                  <label>Option B</label>
-                  <input
-                    type="text"
-                    name="option_b"
-                    value={singleQuestion.option_b}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter option B"
-                  />
-                </div>
-                <div className="option-card">
-                  <label>Option C</label>
-                  <input
-                    type="text"
-                    name="option_c"
-                    value={singleQuestion.option_c}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter option C"
-                  />
-                </div>
-                <div className="option-card">
-                  <label>Option D</label>
-                  <input
-                    type="text"
-                    name="option_d"
-                    value={singleQuestion.option_d}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter option D"
-                  />
-                </div>
-              </div>
-              
+
               <div className="form-group">
-                <label>Correct Answer</label>
+                <label htmlFor="optionB">Option B</label>
+                <input
+                  id="optionB"
+                  type="text"
+                  name="option_b"
+                  value={singleQuestion.option_b}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="optionC">Option C</label>
+                <input
+                  id="optionC"
+                  type="text"
+                  name="option_c"
+                  value={singleQuestion.option_c}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="optionD">Option D</label>
+                <input
+                  id="optionD"
+                  type="text"
+                  name="option_d"
+                  value={singleQuestion.option_d}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="explanation">Explanation</label>
+              <textarea
+                id="explanation"
+                name="explanation"
+                value={singleQuestion.explanation}
+                onChange={handleInputChange}
+                rows="3"
+                placeholder="Add explanation here..."
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="marks">Marks</label>
+              <input
+                id="marks"
+                type="number"
+                name="marks"
+                value={singleQuestion.marks}
+                onChange={handleInputChange}
+                min="1"
+                max="10"
+                required
+              />
+            </div>
+
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isMulti}
+                  onChange={handleMultiToggle}
+                  aria-checked={isMulti}
+                />{" "}
+                Multiple Correct Answers
+              </label>
+            </div>
+
+            {!isMulti ? (
+              <div className="form-group">
+                <label htmlFor="correctAnswer">Correct Answer</label>
                 <select
+                  id="correctAnswer"
                   name="correct_answer"
                   value={singleQuestion.correct_answer}
                   onChange={handleInputChange}
@@ -306,25 +444,43 @@ const QuestionUpload = () => {
                   <option value="D">D</option>
                 </select>
               </div>
-              
-              <button type="submit" className="add-btn">
-                <FaPlus /> Add Question
-              </button>
-            </form>
-          </div>
+            ) : (
+              <div className="form-group checkbox-group">
+                <label>Select All Correct Answers</label>
+                <div className="multi-checkboxes">
+                  {["A", "B", "C", "D"].map((option) => (
+                    <label key={option} htmlFor={`correct-${option}`}>
+                      <input
+                        id={`correct-${option}`}
+                        type="checkbox"
+                        value={option}
+                        checked={singleQuestion.correct_answers.includes(option)}
+                        onChange={handleMultiCorrectAnswerChange}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="submit-btn"
+              aria-label="Add question"
+            >
+              <FaCheckCircle /> Add Question
+            </button>
+          </form>
         </div>
       )}
 
-      {/* Success Message */}
       {showSuccess && (
-        <div className="success-message">
-          <FaCheckCircle /> {message}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {message && !showSuccess && (
-        <div className={`error-message ${isError ? 'show' : ''}`}>
+        <div
+          className={`message-box ${isError ? "error" : "success"}`}
+          role="alert"
+          aria-live="assertive"
+        >
           {message}
         </div>
       )}

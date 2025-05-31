@@ -1,4 +1,3 @@
-// src/components/admin/ExamForm.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,6 +9,7 @@ const ExamForm = ({ isEdit }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+
   const [exam, setExam] = useState({
     title: '',
     subject: '',
@@ -20,24 +20,23 @@ const ExamForm = ({ isEdit }) => {
     selected_questions: [],
     notification_message: 'A new exam has been scheduled. Please check your dashboard for details.'
   });
+
   const [allQuestions, setAllQuestions] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [filter, setFilter] = useState({
-    subject: '',
-    search: ''
-  });
+  const [filter, setFilter] = useState({ subject: '', search: '' });
   const [isPublished, setIsPublished] = useState(false);
 
   useEffect(() => {
-    document.title = isEdit ? "Edit Exam" : "Add Exam";
+    document.title = isEdit ? 'Edit Exam' : 'Add Exam';
   }, [isEdit]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const [questionsRes, subjectsRes] = await Promise.all([
           axios.get('http://127.0.0.1:8000/api/questions/', {
             headers: { Authorization: `Token ${token}` }
@@ -47,17 +46,38 @@ const ExamForm = ({ isEdit }) => {
           })
         ]);
 
-        setAllQuestions(questionsRes.data);
-        setSubjects(subjectsRes.data);
+        const subjectsData = subjectsRes.data;
+        let questionsData = questionsRes.data;
+
+        // Convert string subjects to proper subject objects
+        questionsData = questionsData.map(question => {
+          // Preserve if already proper object
+          if (question.subject && typeof question.subject === 'object') {
+            return question;
+          }
+          
+          // Handle string-based subjects
+          const subjectValue = question.subject || '';
+          const foundSubject = subjectsData.find(
+            sub => sub.name.trim().toLowerCase() === subjectValue.trim().toLowerCase()
+          );
+          
+          return {
+            ...question,
+            subject: foundSubject || null
+          };
+        });
+
+        setAllQuestions(questionsData);
+        setSubjects(subjectsData);
 
         if (isEdit && id) {
           const examRes = await axios.get(`http://127.0.0.1:8000/api/exams/${id}/`, {
             headers: { Authorization: `Token ${token}` }
           });
-          
+
           const examData = examRes.data;
           setIsPublished(examData.is_published);
-          
           setExam({
             title: examData.title || '',
             subject: examData.subject || '',
@@ -65,17 +85,16 @@ const ExamForm = ({ isEdit }) => {
             duration: examData.duration || 60,
             start_time: examData.start_time ? examData.start_time.slice(0, 16) : '',
             end_time: examData.end_time ? examData.end_time.slice(0, 16) : '',
-            selected_questions: examData.questions.map(q => q.id) || [],
+            selected_questions: examData.questions ? examData.questions.map(q => q.id) : [],
             notification_message: examData.notification_message || 'A new exam has been scheduled. Please check your dashboard for details.'
           });
         }
       } catch (err) {
-        setError('Failed to load data');
+        setError('Failed to load data: ' + (err.response?.data?.detail || err.message));
       } finally {
         setLoading(false);
       }
     };
-    
     fetchData();
   }, [id, isEdit, token]);
 
@@ -91,91 +110,78 @@ const ExamForm = ({ isEdit }) => {
 
   const handleQuestionSelect = (questionId) => {
     setExam(prev => {
-      const newSelected = [...prev.selected_questions];
-      const index = newSelected.indexOf(questionId);
-      
-      if (index > -1) {
-        newSelected.splice(index, 1);
-      } else {
-        newSelected.push(questionId);
-      }
-      
-      return { ...prev, selected_questions: newSelected };
+      const index = prev.selected_questions.indexOf(questionId);
+      const updatedQuestions = [...prev.selected_questions];
+      if (index > -1) updatedQuestions.splice(index, 1);
+      else updatedQuestions.push(questionId);
+      return { ...prev, selected_questions: updatedQuestions };
     });
   };
 
   const handleMoveQuestion = (index, direction) => {
     setExam(prev => {
-      const newSelected = [...prev.selected_questions];
+      const list = [...prev.selected_questions];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      
-      if (targetIndex >= 0 && targetIndex < newSelected.length) {
-        [newSelected[index], newSelected[targetIndex]] = 
-          [newSelected[targetIndex], newSelected[index]];
+      if (targetIndex >= 0 && targetIndex < list.length) {
+        [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
       }
-      
-      return { ...prev, selected_questions: newSelected };
+      return { ...prev, selected_questions: list };
     });
   };
 
   const filteredQuestions = allQuestions.filter(q => {
-    const matchesSubject = filter.subject ? q.subject.id === filter.subject : true;
-    const matchesSearch = filter.search
-      ? q.text.toLowerCase().includes(filter.search.toLowerCase())
-      : true;
-    return matchesSubject && matchesSearch;
+    const subjectMatch = filter.subject ? 
+      (q.subject ? String(q.subject.id) === filter.subject : false) : true;
+    const searchMatch = filter.search ? 
+      q.text.toLowerCase().includes(filter.search.toLowerCase()) : true;
+    return subjectMatch && searchMatch;
   });
 
   const selectedQuestionDetails = exam.selected_questions
     .map(id => allQuestions.find(q => q.id === id))
-    .filter(q => q);
+    .filter(Boolean);
 
   const handleSubmit = async (e, publish = false) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+    if (exam.selected_questions.length === 0) {
+      setError('Please select at least one question');
+      return;
+    }
     try {
-      const examData = { 
-        ...exam, 
-        is_published: publish || isPublished
-      };
-      
+      const payload = { ...exam, is_published: publish || isPublished };
       let response;
       if (isEdit) {
-        response = await axios.put(`http://127.0.0.1:8000/api/exams/${id}/`, examData, {
+        response = await axios.put(`http://127.0.0.1:8000/api/exams/${id}/`, payload, {
           headers: { Authorization: `Token ${token}` }
         });
       } else {
-        response = await axios.post('http://127.0.0.1:8000/api/exams/', examData, {
+        response = await axios.post('http://127.0.0.1:8000/api/exams/', payload, {
           headers: { Authorization: `Token ${token}` }
         });
       }
-      
-      setSuccess(`${isEdit ? 'Updated' : 'Created'} exam successfully!`);
-      
+
       if (publish && !isPublished) {
-        await axios.post(`http://127.0.0.1:8000/api/exams/${response.data.id || id}/publish/`, {
+        await axios.post(`http://127.0.0.1:8000/api/exams/${response.data.id}/publish/`, {
           message: exam.notification_message
         }, {
           headers: { Authorization: `Token ${token}` }
         });
-        setSuccess(prev => prev + ' Notifications sent to students!');
         setIsPublished(true);
       }
-      
+
+      setSuccess(`Exam ${isEdit ? 'updated' : 'created'} successfully!`);
       setTimeout(() => navigate('/admin/exams'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save exam');
+      setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to save exam');
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
-
   return (
     <div className="exam-form-container">
-      <h2>{isEdit ? 'Edit Exam' : 'Create New Exam'}</h2>
-      
+      <h2>{isEdit ? "Edit Exam" : "Create New Exam"}</h2>
+
       {success && <div className="success-message">{success}</div>}
       {error && <div className="error-message">{error}</div>}
 
@@ -194,7 +200,7 @@ const ExamForm = ({ isEdit }) => {
                 placeholder="Enter exam title"
               />
             </div>
-            
+
             <div className="form-group">
               <label>Subject*</label>
               <select
@@ -204,14 +210,14 @@ const ExamForm = ({ isEdit }) => {
                 required
               >
                 <option value="">Select Subject</option>
-                {subjects.map(subject => (
+                {subjects.map((subject) => (
                   <option key={subject.id} value={subject.id}>
                     {subject.name}
                   </option>
                 ))}
               </select>
             </div>
-            
+
             <div className="form-group">
               <label>Mode*</label>
               <select
@@ -224,7 +230,7 @@ const ExamForm = ({ isEdit }) => {
                 <option value="strict">Strict</option>
               </select>
             </div>
-            
+
             <div className="form-group">
               <label>Duration (minutes)*</label>
               <input
@@ -236,7 +242,7 @@ const ExamForm = ({ isEdit }) => {
                 required
               />
             </div>
-            
+
             <div className="form-group">
               <label>Start Time</label>
               <input
@@ -246,7 +252,7 @@ const ExamForm = ({ isEdit }) => {
                 onChange={handleChange}
               />
             </div>
-            
+
             <div className="form-group">
               <label>End Time</label>
               <input
@@ -279,7 +285,7 @@ const ExamForm = ({ isEdit }) => {
               {exam.selected_questions.length} selected
             </div>
           </div>
-          
+
           <div className="filters">
             <div className="form-group">
               <label>Filter by Subject</label>
@@ -289,14 +295,14 @@ const ExamForm = ({ isEdit }) => {
                 onChange={handleFilterChange}
               >
                 <option value="">All Subjects</option>
-                {subjects.map(subject => (
+                {subjects.map((subject) => (
                   <option key={subject.id} value={subject.id}>
                     {subject.name}
                   </option>
                 ))}
               </select>
             </div>
-            
+
             <div className="form-group">
               <label>Search Questions</label>
               <input
@@ -308,7 +314,7 @@ const ExamForm = ({ isEdit }) => {
               />
             </div>
           </div>
-          
+
           <div className="question-lists-container">
             <div className="question-list available-questions">
               <h4>Available Questions ({filteredQuestions.length})</h4>
@@ -318,24 +324,30 @@ const ExamForm = ({ isEdit }) => {
                     type="checkbox"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        const top100 = filteredQuestions.slice(0, 100).map(q => q.id);
-                        setExam(prev => ({
+                        const top100 = filteredQuestions
+                          .slice(0, 100)
+                          .map((q) => q.id);
+                        setExam((prev) => ({
                           ...prev,
-                          selected_questions: Array.from(new Set([...prev.selected_questions, ...top100]))
+                          selected_questions: Array.from(
+                            new Set([...prev.selected_questions, ...top100])
+                          ),
                         }));
                       }
                     }}
-                  />{' '}
+                  />{" "}
                   Select Top 100 Questions
                 </label>
               </div>
 
               <div className="questions-container">
-                {filteredQuestions.map(question => (
+                {filteredQuestions.map((question) => (
                   <div
                     key={question.id}
                     className={`question-item ${
-                      exam.selected_questions.includes(question.id) ? 'selected' : ''
+                      exam.selected_questions.includes(question.id)
+                        ? "selected"
+                        : ""
                     }`}
                     onClick={() => handleQuestionSelect(question.id)}
                   >
@@ -349,7 +361,7 @@ const ExamForm = ({ isEdit }) => {
                     <div className="question-content">
                       <div className="question-text">{question.text}</div>
                       <div className="question-meta">
-                        <span>Subject: {subjects.find(s => s.id === question.subject.id)?.name}</span>
+                        <span>Subject: {question.subject?.name || "N/A"}</span>
                         <span>Marks: {question.marks}</span>
                       </div>
                     </div>
@@ -357,10 +369,10 @@ const ExamForm = ({ isEdit }) => {
                 ))}
               </div>
             </div>
-            
+
             <div className="question-list selected-questions">
               <h4>Selected Questions</h4>
-              
+
               <div className="questions-container">
                 {selectedQuestionDetails.length > 0 ? (
                   selectedQuestionDetails.map((question, index) => (
@@ -370,15 +382,17 @@ const ExamForm = ({ isEdit }) => {
                         <div className="question-actions">
                           <button
                             type="button"
-                            onClick={() => handleMoveQuestion(index, 'up')}
+                            onClick={() => handleMoveQuestion(index, "up")}
                             disabled={index === 0}
                           >
                             <FaArrowUp />
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleMoveQuestion(index, 'down')}
-                            disabled={index === selectedQuestionDetails.length - 1}
+                            onClick={() => handleMoveQuestion(index, "down")}
+                            disabled={
+                              index === selectedQuestionDetails.length - 1
+                            }
                           >
                             <FaArrowDown />
                           </button>
@@ -411,32 +425,28 @@ const ExamForm = ({ isEdit }) => {
         <div className="form-actions">
           <button
             type="button"
-            onClick={() => navigate('/admin/exams')}
+            onClick={() => navigate("/admin/exams")}
             className="btn-cancel"
           >
             Cancel
           </button>
-          
-          <button
-            type="submit"
-            className="btn-save"
-          >
-            {isEdit ? 'Update Exam' : 'Save as Draft'}
+
+          <button type="submit" className="btn-save">
+            {isEdit ? "Update Exam" : "Save as Draft"}
           </button>
-          
+
           <button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
             className="btn-publish"
             disabled={exam.selected_questions.length === 0 || isPublished}
           >
-            <FaPaperPlane /> 
-            {isPublished 
-              ? 'Already Published' 
-              : isEdit 
-                ? 'Update & Publish' 
-                : 'Publish Exam'
-            }
+            <FaPaperPlane />
+            {isPublished
+              ? "Already Published"
+              : isEdit
+              ? "Update & Publish"
+              : "Publish Exam"}
           </button>
         </div>
       </form>

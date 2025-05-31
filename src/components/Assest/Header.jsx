@@ -1,12 +1,18 @@
 // src/components/Header.js
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/authContext';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Close menu when route changes
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location]);
 
   const handleLogout = () => {
     logout();
@@ -34,7 +40,6 @@ export default function Header() {
             </>
           )}
 
-
           {user?.role === 'student' && (
             <>
               <Link to="/student">Dashboard</Link>
@@ -49,12 +54,21 @@ export default function Header() {
               <button className="logout-btn" onClick={handleLogout}>Logout</button>
             </div>
           ) : (
-            <Link to="/login" className="login-btn" onClick={() => setMenuOpen(false)}>Login</Link>
+            <Link to="/login" className="login-btn">Login</Link>
           )}
         </div>
 
-        <button className="menu-toggle" onClick={toggleMenu} aria-label="Toggle navigation">
-          <i className={`fas ${menuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+        <button 
+          className="menu-toggle" 
+          onClick={toggleMenu} 
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+        >
+          <div className={`hamburger ${menuOpen ? 'open' : ''}`}>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </button>
       </div>
       
@@ -142,8 +156,39 @@ export default function Header() {
           background: transparent;
           border: none;
           color: white;
-          font-size: 1.5rem;
           cursor: pointer;
+          padding: 10px;
+          z-index: 1001;
+        }
+        
+        .hamburger {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          width: 30px;
+          height: 21px;
+          position: relative;
+        }
+        
+        .hamburger span {
+          display: block;
+          height: 3px;
+          width: 100%;
+          background: white;
+          border-radius: 3px;
+          transition: all 0.3s ease;
+        }
+        
+        .hamburger.open span:nth-child(1) {
+          transform: translateY(9px) rotate(45deg);
+        }
+        
+        .hamburger.open span:nth-child(2) {
+          opacity: 0;
+        }
+        
+        .hamburger.open span:nth-child(3) {
+          transform: translateY(-9px) rotate(-45deg);
         }
         
         /* Responsive Design */
@@ -163,26 +208,32 @@ export default function Header() {
           }
           
           .nav-links {
-            position: absolute;
-            top: 70px;
-            left: 0;
-            right: 0;
+            position: fixed;
+            top: 0;
+            left: ${menuOpen ? '0' : '-100%'};
+            width: 70%;
+            height: 100vh;
             background: linear-gradient(135deg, #2575fc 0%, #6a11cb 100%);
             flex-direction: column;
-            padding: 20px 0;
-            gap: 20px;
-            clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+            padding: 80px 20px 20px;
+            gap: 25px;
             transition: all 0.4s ease;
-          }
-          
-          .nav-links.active {
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+            z-index: 1000;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
           }
           
           .nav-links a, .user-section {
             width: 100%;
-            text-align: center;
-            padding: 10px 0;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          
+          .user-section {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+            margin-top: 20px;
           }
           
           .menu-toggle {
@@ -195,8 +246,8 @@ export default function Header() {
             font-size: 1.5rem;
           }
           
-          .menu-toggle {
-            font-size: 1.3rem;
+          .nav-links {
+            width: 85%;
           }
         }
       `}</style>
