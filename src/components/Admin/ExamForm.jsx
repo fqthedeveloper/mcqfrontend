@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaTrash, FaArrowUp, FaArrowDown, FaPaperPlane } from 'react-icons/fa';
 import { useAuth } from '../../context/authContext';
+import Swal from 'sweetalert2';
 import '../CSS/ExamForm.css';
 
 const ExamForm = ({ isEdit }) => {
@@ -24,8 +25,6 @@ const ExamForm = ({ isEdit }) => {
   const [allQuestions, setAllQuestions] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState({ subject: '', search: '' });
   const [isPublished, setIsPublished] = useState(false);
 
@@ -51,12 +50,10 @@ const ExamForm = ({ isEdit }) => {
 
         // Convert string subjects to proper subject objects
         questionsData = questionsData.map(question => {
-          // Preserve if already proper object
           if (question.subject && typeof question.subject === 'object') {
             return question;
           }
           
-          // Handle string-based subjects
           const subjectValue = question.subject || '';
           const foundSubject = subjectsData.find(
             sub => sub.name.trim().toLowerCase() === subjectValue.trim().toLowerCase()
@@ -90,13 +87,47 @@ const ExamForm = ({ isEdit }) => {
           });
         }
       } catch (err) {
-        setError('Failed to load data: ' + (err.response?.data?.detail || err.message));
+        showError('Failed to load data: ' + (err.response?.data?.detail || err.message));
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, [id, isEdit, token]);
+
+  const showSuccess = (message) => {
+    Swal.fire({
+      icon: 'success',
+      title: 'Success!',
+      text: message,
+      timer: 3000,
+      showConfirmButton: false
+    });
+  };
+
+  const showError = (message) => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error!',
+      text: message,
+    });
+  };
+
+  const showConfirmation = (title, text, confirmText, callback) => {
+    Swal.fire({
+      title: title,
+      text: text,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: confirmText
+    }).then((result) => {
+      if (result.isConfirmed) {
+        callback();
+      }
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -143,15 +174,29 @@ const ExamForm = ({ isEdit }) => {
 
   const handleSubmit = async (e, publish = false) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    
     if (exam.selected_questions.length === 0) {
-      setError('Please select at least one question');
+      showError('Please select at least one question');
       return;
     }
+
+    if (publish) {
+      showConfirmation(
+        'Publish Exam?',
+        'This will notify all students. Are you sure you want to publish this exam?',
+        'Yes, publish it!',
+        () => performSubmit(publish)
+      );
+    } else {
+      performSubmit(publish);
+    }
+  };
+
+  const performSubmit = async (publish) => {
     try {
       const payload = { ...exam, is_published: publish || isPublished };
       let response;
+      
       if (isEdit) {
         response = await axios.put(`http://127.0.0.1:8000/api/exams/${id}/`, payload, {
           headers: { Authorization: `Token ${token}` }
@@ -171,19 +216,20 @@ const ExamForm = ({ isEdit }) => {
         setIsPublished(true);
       }
 
-      setSuccess(`Exam ${isEdit ? 'updated' : 'created'} successfully!`);
+      const successMessage = `Exam ${isEdit ? 'updated' : 'created'} successfully!`;
+      showSuccess(successMessage);
       setTimeout(() => navigate('/admin/exams'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to save exam');
+      const errorMessage = err.response?.data?.message || 
+                           err.response?.data?.detail || 
+                           'Failed to save exam';
+      showError(errorMessage);
     }
   };
 
   return (
     <div className="exam-form-container">
       <h2>{isEdit ? "Edit Exam" : "Create New Exam"}</h2>
-
-      {success && <div className="success-message">{success}</div>}
-      {error && <div className="error-message">{error}</div>}
 
       <form onSubmit={(e) => handleSubmit(e, false)}>
         <div className="form-section">

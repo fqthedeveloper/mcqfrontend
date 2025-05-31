@@ -104,7 +104,7 @@ function App() {
               <Route path="/student/exam-list" element={
                 <ProtectedRoute element={<ExamList />} allowedRoles={["student"]} />
               } />
-              <Route path="/student/exam/:id" element={
+              <Route path="/student/exam/:examId" element={
                 <ProtectedRoute element={<Exam />} allowedRoles={["student"]} />
               } />
               <Route path="/student/results" element={

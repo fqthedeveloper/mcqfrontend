@@ -1,4 +1,3 @@
-// src/components/Student/ExamList.js
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../../context/examContext';
@@ -17,8 +16,12 @@ export default function ExamList() {
   }, []);
 
   const handleStartExam = (exam) => {
+    if (!exam || !exam.id) {
+      console.error('Invalid exam object:', exam);
+      return;
+    }
+
     startExam(exam);
-    // Pass exam object through navigation state
     navigate(`/student/exam/${exam.id}`, { state: { exam } });
   };
 
@@ -35,6 +38,7 @@ export default function ExamList() {
         <h1>Available Exams</h1>
         <p>Select an exam to begin your assessment</p>
       </div>
+
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
@@ -57,45 +61,47 @@ export default function ExamList() {
         </div>
       ) : (
         <div className="exams-grid">
-          {exams.map((exam) => (
-            <div key={exam.id} className="exam-card">
-              <div className="card-header">
-                <div className="exam-icon">📝</div>
-                <h3 className="exam-title">{exam.title}</h3>
+          {exams
+            .filter((exam) => exam && exam.id)
+            .map((exam) => (
+              <div key={exam.id} className="exam-card">
+                <div className="card-header">
+                  <div className="exam-icon">📝</div>
+                  <h3 className="exam-title">{exam.title}</h3>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Subject:</span>
+                  <span className="detail-value">{exam.subject_name}</span>
+                </div>
+
+                <div className="exam-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Duration:</span>
+                    <span className="detail-value">{formatDuration(exam.duration)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Questions:</span>
+                    <span className="detail-value">{exam.question_count || exam.questions?.length || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Type Mode:</span>
+                    <span className="detail-value">{exam.mode}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Status:</span>
+                    <span className="status-badge">Available</span>
+                  </div>
+                </div>
+
+                <button className="start-exam-btn" onClick={() => handleStartExam(exam)}>
+                  Start Exam <span className="btn-icon">➔</span>
+                </button>
               </div>
-              <div className="detail-item">
-                <span className="detail-label">Subject:</span>
-                <span className="detail-value">{exam.subject_name}</span>
-              </div>
-              <div className="exam-details">
-                <div className="detail-item">
-                  <span className="detail-label">Duration:</span>
-                  <span className="detail-value">{formatDuration(exam.duration)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Questions:</span>
-                  <span className="detail-value">{exam.question_count}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Type Mode:</span>
-                  <span className="detail-value">{exam.mode}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Status:</span>
-                  <span className="status-badge">Available</span>
-                </div>
-              </div>
-              <button 
-                className="start-exam-btn"
-                onClick={() => handleStartExam(exam)}
-              >
-                Start Exam
-                <span className="btn-icon">➔</span>
-              </button>
-            </div>
-          ))}
+            ))}
         </div>
       )}
+
       <div className="exam-tips">
         <h4>Exam Tips</h4>
         <ul>

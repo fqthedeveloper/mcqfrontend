@@ -1,5 +1,5 @@
-// src/components/Shared/Timer.js
 import React, { useState, useEffect } from 'react';
+import { formatTime } from './timeUtils';
 
 export default function Timer({ duration, onTimeUp }) {
   const [timeLeft, setTimeLeft] = useState(duration * 60);
@@ -17,12 +17,9 @@ export default function Timer({ duration, onTimeUp }) {
     return () => clearTimeout(timerId);
   }, [timeLeft, onTimeUp]);
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
   return (
     <div className="timer">
-      Time Remaining: {minutes}:{seconds < 10 ? '0' : ''}{seconds}
+      Time Remaining: {formatTime(timeLeft)}
     </div>
   );
 }

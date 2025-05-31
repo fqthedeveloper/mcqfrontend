@@ -8,17 +8,14 @@ import {
   FaPlus,
   FaCheckCircle,
 } from "react-icons/fa";
+import Swal from "sweetalert2";
 import "../CSS/Questionupload.css";
 
 const QuestionUpload = () => {
   const [file, setFile] = useState(null);
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [showSingleForm, setShowSingleForm] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [isMulti, setIsMulti] = useState(false);
-  const [bulkSubjectId, setBulkSubjectId] = useState("");
 
   const [singleQuestion, setSingleQuestion] = useState({
     subject_id: "",
@@ -51,6 +48,13 @@ const QuestionUpload = () => {
       setSubjects(response.data);
     } catch (error) {
       console.error("Failed to load subjects", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Failed to load subjects",
+        timer: 3000,
+        showConfirmButton: false,
+      });
     }
   };
 
@@ -112,32 +116,40 @@ const QuestionUpload = () => {
       link.click();
       link.remove();
 
-      setMessage("Format downloaded successfully!");
-      setShowSuccess(true);
-      setIsError(false);
-      setTimeout(() => setShowSuccess(false), 3000);
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Format downloaded successfully!",
+        timer: 3000,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Download error:", error);
-      setMessage("Failed to download format");
-      setIsError(true);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Failed to download format",
+        timer: 3000,
+        showConfirmButton: false,
+      });
     }
   };
 
   const handleBulkUpload = async (e) => {
     e.preventDefault();
-    if (!file || !bulkSubjectId) {
-      setMessage("Please select a file and subject");
-      setShowSuccess(true);
-      setIsError(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+    if (!file) {
+      Swal.fire({
+        icon: "warning",
+        title: "Missing File",
+        text: "Please select an Excel file to upload",
+        timer: 3000,
+        showConfirmButton: false,
+      });
       return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("subject_id", bulkSubjectId);
 
     try {
       const authToken = token || localStorage.getItem("utd_auth");
@@ -151,17 +163,24 @@ const QuestionUpload = () => {
           },
         }
       );
-      setMessage("Questions uploaded successfully!");
-      setShowSuccess(true);
-      setIsError(false);
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Questions uploaded successfully!",
+        timer: 3000,
+        showConfirmButton: false,
+      });
       setFile(null);
-      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Upload error:", error.response || error.message);
-      setMessage(error.response?.data?.message || "Upload failed");
-      setShowSuccess(true);
-      setIsError(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      const errorMessage = error.response?.data?.message || "Upload failed";
+      Swal.fire({
+        icon: "error",
+        title: "Upload Failed",
+        text: errorMessage,
+        timer: 3000,
+        showConfirmButton: false,
+      });
     }
   };
 
@@ -170,15 +189,19 @@ const QuestionUpload = () => {
     try {
       const authToken = token || localStorage.getItem("utd_auth");
 
+      if (isMulti && singleQuestion.correct_answers.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "Missing Information",
+          text: "Please select at least one correct answer",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
       let correctAnswersPayload;
       if (isMulti) {
-        if (singleQuestion.correct_answers.length === 0) {
-          setMessage("Please select at least one correct answer.");
-          setIsError(true);
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
-          return;
-        }
         correctAnswersPayload = singleQuestion.correct_answers;
       } else {
         correctAnswersPayload = singleQuestion.correct_answer;
@@ -205,9 +228,16 @@ const QuestionUpload = () => {
           "Content-Type": "application/json",
         },
       });
-      setMessage("Question added successfully!");
-      setShowSuccess(true);
-      setIsError(false);
+
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Question added successfully!",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+
+      // Reset form
       setSingleQuestion({
         subject_id: "",
         text: "",
@@ -221,13 +251,17 @@ const QuestionUpload = () => {
         explanation: "",
       });
       setIsMulti(false);
-      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Add question error:", error.response || error.message);
-      setMessage(error.response?.data?.message || "Failed to add question");
-      setShowSuccess(true);
-      setIsError(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      const errorMessage =
+        error.response?.data?.message || "Failed to add question";
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: errorMessage,
+        timer: 3000,
+        showConfirmButton: false,
+      });
     }
   };
 
@@ -259,23 +293,6 @@ const QuestionUpload = () => {
         <div className="bulk-upload">
           <form onSubmit={handleBulkUpload}>
             <div className="form-group">
-              <label htmlFor="bulkSubject">Select Subject</label>
-              <select
-                id="bulkSubject"
-                value={bulkSubjectId}
-                onChange={(e) => setBulkSubjectId(e.target.value)}
-                required
-              >
-                <option value="">--Select Subject--</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
               <label htmlFor="bulkFile">Upload Excel File</label>
               <input
                 id="bulkFile"
@@ -284,6 +301,9 @@ const QuestionUpload = () => {
                 onChange={(e) => setFile(e.target.files[0])}
                 required
               />
+              <p className="file-info">
+                Note: The Excel file must include the subject information for each question
+              </p>
             </div>
 
             <div className="form-actions">
@@ -472,16 +492,6 @@ const QuestionUpload = () => {
               <FaCheckCircle /> Add Question
             </button>
           </form>
-        </div>
-      )}
-
-      {showSuccess && (
-        <div
-          className={`message-box ${isError ? "error" : "success"}`}
-          role="alert"
-          aria-live="assertive"
-        >
-          {message}
         </div>
       )}
     </div>

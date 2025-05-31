@@ -1,7 +1,5 @@
-// src/context/authContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-
 
 const AuthContext = createContext();
 
@@ -52,6 +50,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 export function AuthRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
