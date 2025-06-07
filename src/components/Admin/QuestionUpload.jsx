@@ -39,7 +39,7 @@ const QuestionUpload = () => {
 
   const fetchSubjects = async () => {
     try {
-      const authToken = token || localStorage.getItem("utd_auth");
+      const authToken = token || localStorage.getItem("access_token");
       const response = await axios.get("http://localhost:8000/api/subjects/", {
         headers: {
           Authorization: `Token ${authToken}`,
@@ -94,7 +94,7 @@ const QuestionUpload = () => {
 
   const handleDownload = async () => {
     try {
-      const authToken = token || localStorage.getItem("utd_auth");
+      const authToken = token || localStorage.getItem("access_token");
       const response = await fetch(
         "http://localhost:8000/api/questions/download_format/",
         {
@@ -152,7 +152,7 @@ const QuestionUpload = () => {
     formData.append("file", file);
 
     try {
-      const authToken = token || localStorage.getItem("utd_auth");
+      const authToken = token || localStorage.getItem("access_token");
       await axios.post(
         "http://localhost:8000/api/questions/bulk_upload/",
         formData,
@@ -187,7 +187,7 @@ const QuestionUpload = () => {
   const handleSingleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const authToken = token || localStorage.getItem("utd_auth");
+      const authToken = token || localStorage.getItem("access_token");
 
       if (isMulti && singleQuestion.correct_answers.length === 0) {
         Swal.fire({
