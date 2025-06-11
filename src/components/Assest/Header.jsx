@@ -44,7 +44,7 @@ export default function Header() {
             <>
               <Link to="/student">Dashboard</Link>
               <Link to="/student/exam-list">Exams</Link>
-              <Link to="/student/results-list">My Results</Link>
+              <Link to="/student/results/">My Results</Link>
             </>
           )}
 

@@ -1,9 +1,7 @@
-// src/components/Admin/AdminResultList.jsx
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authGet } from '../../services/api';
-import '../CSS/Result.css'; // You can reuse the same CSS
+import '../CSS/Result.css';
 
 export default function AdminResultList() {
   const [results, setResults] = useState([]);
@@ -11,26 +9,25 @@ export default function AdminResultList() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchAllResults = async () => {
+    const fetchExamHistory = async () => {
       try {
-        // Admin can GET /api/results/ to see all students’ results
         const data = await authGet('/api/results/');
-        setResults(data.results || data); 
+        setResults(data.results || data);
       } catch (err) {
-        console.error('Error fetching all results:', err);
-        setError(err.message || 'Failed to load results');
+        console.error('Error fetching exam history:', err);
+        setError(err.message || 'Failed to load exam history');
       } finally {
         setLoading(false);
       }
     };
-    fetchAllResults();
+    fetchExamHistory();
   }, []);
 
   if (loading) {
     return (
       <div className="result-loading">
         <div className="loading-spinner"></div>
-        <p>Loading all student results...</p>
+        <p>Loading your exam history...</p>
       </div>
     );
   }
@@ -38,7 +35,7 @@ export default function AdminResultList() {
   if (error) {
     return (
       <div className="result-error">
-        <h3>Error Loading Results</h3>
+        <h3>Error Loading History</h3>
         <p>{error}</p>
       </div>
     );
@@ -47,8 +44,8 @@ export default function AdminResultList() {
   if (results.length === 0) {
     return (
       <div className="result-empty">
-        <h3>No Results Found</h3>
-        <p>Students have not completed any exams yet.</p>
+        <h3>No Exam History</h3>
+        <p>You have not completed any exams yet.</p>
       </div>
     );
   }
@@ -56,17 +53,17 @@ export default function AdminResultList() {
   return (
     <div className="result-container">
       <div className="result-header">
-        <h1>All Students’ Results</h1>
+        <h1>My Exam History</h1>
       </div>
 
       <div className="result-details">
         <table className="result-table">
           <thead>
             <tr>
+              <th>Exam Name</th>
               <th>Student Name</th>
-              <th>Exam Title</th>
-              <th>Date</th>
               <th>Score</th>
+              <th>Marks Obtained</th>
               <th>Right Answers</th>
               <th>Wrong Answers</th>
               <th>Result</th>
@@ -74,32 +71,32 @@ export default function AdminResultList() {
             </tr>
           </thead>
           <tbody>
-            {results.map((res) => (
-              <tr key={res.id}>
-                <td>{res.student_name}</td>
-                <td>{res.exam_title}</td>
-                <td>{new Date(res.date).toLocaleString()}</td>
-                <td>
-                  {res.score} / {res.total_marks}
-                </td>
-                <td>{res.right_answers}</td>
-                <td>{res.wrong_answers}</td>
-                <td>
-                  <span
-                    className={`status-badge ${
-                      res.pass_fail === 'Pass' ? 'correct' : 'incorrect'
-                    }`}
-                  >
-                    {res.pass_fail}
-                  </span>
-                </td>
-                <td>
-                  <Link to={`/student/results/${res.session}`}>
-                    View Details
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {results.map((res) => {
+              const percentage = res.total_marks
+                ? Math.round((res.score / res.total_marks) * 100)
+                : 0;
+              return (
+                <tr key={res.session_id || res.id}>
+                  <td>{res.exam_title}</td>
+                  <td>{res.student_name}</td>
+                  <td>{res.score} / {res.total_marks}</td>
+                  <td>{percentage}%</td>
+                  <td>{ res.right_answers }</td>
+                  <td>{ res.wrong_answers }</td>
+                  <td>
+                    <span className={`status-badge ${res.pass_fail === 'Pass' ? 'correct' : 'incorrect'}`}>
+                      {res.pass_fail}
+                    </span>
+                  </td>
+                  <td>
+                    {/* ✅ FIXED: Use correct identifier for session-based route */}
+                    <Link to={`/results/session/${res.session}`}>
+                      View Result
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

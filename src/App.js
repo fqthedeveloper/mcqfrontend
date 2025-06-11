@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+// src/App.js
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -41,7 +42,7 @@ import "./App.css";
 const RouteDebugger = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
-  useEffect(() => {
+  React.useEffect(() => {
     console.log(
       "Route:",
       location.pathname,
@@ -129,7 +130,7 @@ function App() {
                 }
               />
 
-              <Route
+              {/* <Route
                 path="/verify-otp"
                 element={
                   <ProtectedRoute
@@ -137,7 +138,7 @@ function App() {
                     allowedRoles={["student"]}
                   />
                 }
-              />
+              /> */}
 
               {/* Admin routes */}
               <Route
@@ -250,14 +251,23 @@ function App() {
                   />
                 }
               />
-              <Route path="/student/results/" element={<ResultList />} />
+              <Route 
+                path="/student/results/" 
+                element={
+                  <ProtectedRoute
+                    element={<ResultList />}
+                    allowedRoles={["student"]}
+                  />
+                } 
+              />
 
+              {/* Shared result detail route for both roles */}
               <Route
-                path="/student/results/:sessionId"
+                path="/results/session/:sessionId"
                 element={
                   <ProtectedRoute
                     element={<ResultDetail />}
-                    allowedRoles={["student"]}
+                    allowedRoles={["admin", "student"]}
                   />
                 }
               />

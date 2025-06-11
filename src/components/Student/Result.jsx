@@ -1,234 +1,166 @@
-import React, { useState, useEffect } from 'react';
-import { authPost } from '../../services/api';
-import { useNavigate } from 'react-router-dom';
-import { FiMail, FiClock, FiArrowLeft, FiLock, FiCheck } from 'react-icons/fi';
-import '../CSS/OTP.css';
+// src/components/Student/ResultDetail.jsx
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { authGet } from '../../services/api';
+import '../CSS/Result.css';
+import { Link } from 'react-router-dom';
 
-export default function OTPPage() {
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [message, setMessage] = useState({ text: '', type: '' });
-  const [isLoading, setIsLoading] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const [otpSent, setOtpSent] = useState(false);
-
-  const navigate = useNavigate();
-
-  // Cooldown timer for resend OTP
-  useEffect(() => {
-    let timer;
-    if (cooldown > 0) {
-      timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  // Handle sending OTP
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    if (cooldown > 0) return;
-
-    if (!email) {
-      setMessage({ text: 'Please enter your email', type: 'error' });
-      return;
-    }
-
-    setIsLoading(true);
-    setMessage({ text: '', type: '' });
-
-    try {
-      const res = await authPost('/api/send-otp/', { email });
-      setMessage({ 
-        text: res.message || 'OTP sent to your email', 
-        type: 'success' 
-      });
-      setOtpSent(true);
-      setCooldown(60);
-    } catch (err) {
-      setMessage({ 
-        text: err.response?.data?.error || 'Failed to send OTP', 
-        type: 'error' 
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function ResultDetail() {
+  const { sessionId } = useParams();
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = "Result Page";
-  }, []);
+    const fetchResult = async () => {
+      try {
+        const data = await authGet(`/api/results/session/${sessionId}/`);
+        setResult(data);
+      } catch (err) {
+        console.error('Failed to load result:', err);
+        setError('Failed to load result. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Handle OTP input change
-  const handleOtpChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return; // only numbers allowed
+    fetchResult();
+  }, [sessionId]);
 
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+  if (loading) {
+    return (
+      <div className="result-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading Result Details...</p>
+      </div>
+    );
+  }
 
-    // Autofocus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      if (nextInput) nextInput.focus();
-    }
-  };
+  if (error) {
+    return (
+      <div className="result-error">
+        <div className="error-icon">!</div>
+        <h3>Error Loading Results</h3>
+        <p>{error}</p>
+        <button className="retry-btn" onClick={() => window.location.reload()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
-  // Handle OTP verification
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
+  if (!result) {
+    return (
+      <div className="result-empty">
+        <h3>No Results Found</h3>
+        <p>No result data available for this session.</p>
+      </div>
+    );
+  }
 
-    const fullOtp = otp.join('');
-    if (fullOtp.length !== 6) {
-      setMessage({ text: 'Please enter a 6-digit OTP', type: 'error' });
-      return;
-    }
-
-    setIsLoading(true);
-    setMessage({ text: '', type: '' });
-
-    try {
-      const res = await authPost('/api/verify-otp/', { email, otp: fullOtp });
-      setMessage({ text: res.message || 'Verification successful!', type: 'success' });
-
-      // Redirect to dashboard after success
-      setTimeout(() => {
-        navigate('/dashboard');  // Change to your dashboard route if different
-      }, 1000);
-
-    } catch (err) {
-      setMessage({ text: err.response?.data?.error || 'Invalid OTP code', type: 'error' });
-      setOtp(['', '', '', '', '', '']);
-      const firstInput = document.getElementById('otp-0');
-      if (firstInput) firstInput.focus();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Calculate percentage score
+  const percentageScore = Math.round((result.score / result.total_marks) * 100);
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
+    <div className="result-container">
+      <div className="result-header">
+        <h1>Exam Result</h1>
+        <h2>{result.exam_title}</h2>
+      </div>
 
-        <button className="back-button" onClick={() => navigate(-1)}>
-          <FiArrowLeft size={20} /> Back
-        </button>
-
-        {!otpSent ? (
-          <>
-            <div className="auth-icon">
-              <FiMail size={48} className="text-primary" />
-            </div>
-
-            <h2>Send OTP to Your Email</h2>
-            <p className="auth-subtext">
-              Enter your email address to receive a one-time password
+      <div className="result-summary">
+        <div className="score-card">
+          <div className="score-percentage">
+            {percentageScore}%
+          </div>
+          <div className="score-details">
+            <p><strong>Student:</strong> {result.student_name}</p>
+            <p><strong>Submitted:</strong> {new Date(result.submitted_at).toLocaleString()}</p>
+            <p><strong>Score:</strong> <span className="marks-obtained">{result.score}</span> / {result.total_marks}</p>
+            <p><strong>Status:</strong> 
+              <span className={`status-badge ${result.result.toLowerCase()}`}>
+                {result.result}
+              </span>
             </p>
+          </div>
+        </div>
+      </div>
 
-            <form onSubmit={handleSendOtp} className="auth-form">
-              <div className="form-group">
-                <label htmlFor="email">Email Address</label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading || cooldown > 0}
-                  autoFocus
-                />
+      <div className="result-details">
+        <h3>Question Breakdown</h3>
+        
+        {/* Desktop Table */}
+        <div className="desktop-view">
+          <table className="result-table">
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Correct Answer</th>
+                <th>Your Answer</th>
+                <th>Status</th>
+                <th>Marks</th>
+                <th>Explanation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(result.details).map(([qId, q]) => (
+                <tr key={qId} className={q.is_correct ? "correct-row" : "incorrect-row"}>
+                  <td>{q.question_text}</td>
+                  <td>{q.correct.join(', ')}</td>
+                  <td>{q.selected.join(', ') || '—'}</td>
+                  <td>
+                    <span className={`status-badge ${q.is_correct ? 'correct' : 'incorrect'}`}>
+                      {q.is_correct ? 'Correct' : 'Wrong'}
+                    </span>
+                  </td>
+                  <td>{q.earned} / {q.marks}</td>
+                  <td>{q.explanation || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="mobile-view">
+          {Object.entries(result.details).map(([qId, q]) => (
+            <div key={qId} className={`question-card ${q.is_correct ? 'correct' : 'incorrect'}`}>
+              <div className="question-header">
+                <h4>Question</h4>
+                <span className={`status-badge ${q.is_correct ? 'correct' : 'incorrect'}`}>
+                  {q.is_correct ? 'Correct' : 'Wrong'}
+                </span>
               </div>
-
-              {message.text && (
-                <div className={`message ${message.type}`}>
-                  {message.text}
+              <p className="question-text">{q.question_text}</p>
+              
+              <div className="answer-grid">
+                <div>
+                  <h4>Correct Answer</h4>
+                  <p>{q.correct.join(', ')}</p>
+                </div>
+                <div>
+                  <h4>Your Answer</h4>
+                  <p>{q.selected.join(', ') || '—'}</p>
+                </div>
+                <div>
+                  <h4>Marks</h4>
+                  <p>{q.earned} / {q.marks}</p>
+                </div>
+              </div>
+              
+              {q.explanation && (
+                <div className="explanation">
+                  <h4>Explanation</h4>
+                  <p>{q.explanation}</p>
                 </div>
               )}
-
-              <button
-                type="submit"
-                className="auth-button"
-                disabled={isLoading || cooldown > 0}
-              >
-                {isLoading ? (
-                  <span>Sending...</span>
-                ) : cooldown > 0 ? (
-                  <span>
-                    <FiClock className="icon-spin" /> Resend in {cooldown}s
-                  </span>
-                ) : (
-                  <span>Send OTP</span>
-                )}
-              </button>
-            </form>
-          </>
-        ) : (
-          <>
-            <div className="auth-icon">
-              <FiLock size={48} className="text-primary" />
             </div>
+          ))}
+        </div>
+      </div>
 
-            <h2>Verify OTP</h2>
-            <p className="auth-subtext">
-              Enter the 6-digit code sent to your email
-              <span className="email-highlight"> {email}</span>
-            </p>
-
-            <form onSubmit={handleVerifyOtp} className="auth-form">
-              <div className="otp-container">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    id={`otp-${index}`}
-                    type="text"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Backspace' && !otp[index] && index > 0) {
-                        const prevInput = document.getElementById(`otp-${index - 1}`);
-                        if (prevInput) prevInput.focus();
-                      }
-                    }}
-                    disabled={isLoading}
-                    autoFocus={index === 0}
-                    className="otp-input"
-                  />
-                ))}
-              </div>
-
-              {message.text && (
-                <div className={`message ${message.type}`}>
-                  {message.text}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="auth-button"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span>Verifying...</span>
-                ) : (
-                  <>
-                    <FiCheck size={18} /> Verify Code
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="auth-footer">
-              Didn't receive code?{' '}
-              <button
-                className="text-link"
-                disabled={isLoading || cooldown > 0}
-                onClick={handleSendOtp}
-              >
-                {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend OTP'}
-              </button>
-            </div>
-          </>
-        )}
+      <div className="result-footer">
+        <Link to="/student" className="dashboard-btn">Back to Dashboard</Link>
       </div>
     </div>
   );

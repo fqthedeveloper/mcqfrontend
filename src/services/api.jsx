@@ -115,6 +115,16 @@ export const authDelete = async (endpoint) => {
   return res.json();
 };
 
+// API Methods
+export const authPostFormData = async (endpoint, formData) => {
+  const res = await fetchWithAuthRetry(`${baseURL}${endpoint}`, {
+    method: 'POST',
+    body: formData,
+  });
+  return res.json();
+};
+
+
 // ---------------------- Domain-Specific API ----------------------
 
 export const getExam = (examId) => authGet(`/api/exams/${examId}/`);
